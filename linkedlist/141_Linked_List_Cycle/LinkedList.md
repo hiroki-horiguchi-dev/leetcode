@@ -45,11 +45,14 @@ public class LinkedListImpl implements LinkedList {
     
     // 先頭 head を保持する
     ListNode head;
+    // LinkedList size
+    int size = 0;
     
     @Override
     public boolean add(ListNode addNode) {
         if (head == null) {
             this.head = addNode;
+            size++;
             return true;
         } 
         ListNode node = head;
@@ -57,6 +60,7 @@ public class LinkedListImpl implements LinkedList {
             node = node.next;
         }
         node.next = addNode;
+        size++;
         return true;
     }
 
@@ -66,12 +70,14 @@ public class LinkedListImpl implements LinkedList {
             node.next = head;
         }
         this.head = node;
+        size++;
     }
 
     @Override
     public void add(int index, ListNode addNode) {
         if (head == null) {
             this.head = addNode;
+            size++;
         } else if (index == 0) {
             addFirst(addNode);
         } else {
@@ -82,6 +88,7 @@ public class LinkedListImpl implements LinkedList {
                     // ポインタ張り替えして return
                     addNode.next = node.next;
                     node.next = addNode;
+                    size++;
                     return;
                 }
                 node = node.next;
@@ -98,6 +105,7 @@ public class LinkedListImpl implements LinkedList {
         // 先頭削除
         if (index == 0) {
             head = head.next;
+            size--;
             return;
         }
         
@@ -106,6 +114,7 @@ public class LinkedListImpl implements LinkedList {
         while (node.next != null) {
             if (i == (index - 1)) {
                 node.next = node.next.next;
+                size--;
                 return;
             }
             i++;
