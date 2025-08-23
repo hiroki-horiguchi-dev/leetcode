@@ -87,8 +87,7 @@ public class LinkedListImpl implements LinkedList {
                 node = node.next;
                 i++;
             }
-            // 与えられた index が既存のサイズより大きい場合もありうるので、末尾追加でキャッチ
-            node.next = addNode;
+            throw IndexOutOfBoundsException("index: " + index + "is out of range.")
         }
     }
 
