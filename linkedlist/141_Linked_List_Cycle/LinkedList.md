@@ -51,14 +51,13 @@ public class LinkedListImpl implements LinkedList {
         if (head == null) {
             this.head = addNode;
             return true;
-        } else {
-            ListNode node = head;
-            while (node.next != null) {
-                node = node.next;
-            }
-            node.next = addNode;
-            return true;
+        } 
+        ListNode node = head;
+        while (node.next != null) {
+            node = node.next;
         }
+        node.next = addNode;
+        return true;
     }
 
     @Override
