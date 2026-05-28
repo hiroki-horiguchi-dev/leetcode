@@ -64,7 +64,7 @@ static void handle_request(int fd) {
     ssize_t total = 0;
     while (total < BUF_SIZE - 1) {
         ssize_t n = read(fd, req + total, BUF_SIZE - 1 - total);
-        if (n < 0) { perror("read"); free(req); return; }
+        if (n < 0) { perror("read"); free(req); req = NULL; return; }
         if (n == 0) break;
         total += n;
         /* ヘッダー終端 \r\n\r\n が来たら終了 */
@@ -78,9 +78,11 @@ static void handle_request(int fd) {
     char method[16], path[1024], version[16];
     if (sscanf(req, "%15s %1023s %15s", method, path, version) != 3) {
         free(req);
+        req = NULL;
         return;
     }
     free(req);
+    req = NULL;
 
     /* パスとクエリ文字列に分割 */
     char *qmark = strchr(path, '?');
@@ -134,7 +136,9 @@ static void handle_request(int fd) {
     }
 
     free(header);
+    header = NULL;
     free(body);
+    body = NULL;
 }
 
 /* -------------------------------------------------------
