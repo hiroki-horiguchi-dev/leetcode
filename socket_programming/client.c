@@ -12,18 +12,52 @@
 int main(int argc, char *argv[]) {
     const char *expr = (argc > 1) ? argv[1] : "2+10";
 
-    struct addrinfo hints, *res;
+    struct addrinfo hints
+    struct addrinfo *res;
+
+    //    hints        = addrinfo の実体（箱そのもの）
+    //    &hints       = hints の住所
+    //    res          = 住所を入れる変数（まだ空）
+    //    getaddrinfo  = res に住所を入れてくれる
+
     memset(&hints, 0, sizeof hints);
-    hints.ai_family   = AF_UNSPEC;
+    //  hints を全て0埋めしてくれる
+    //  addrinfo の構造体は以下
+    //  struct addrinfo {
+    //       int ai_flags;              /* input flags */
+    //       int ai_family;             /* protocol family for socket */        --> AF-INET(IPv4) or AF_INET6(IPv6)
+    //       int ai_socktype;           /* socket type */                       --> TCP or UDP
+    //       int ai_protocol;           /* protocol for socket */               --> IPPROTO_TCP or IPPROTO_UDP
+    //       socklen_t ai_addrlen;      /* length of socket-address */          --> ai_addr のサイズ
+    //       struct sockaddr *ai_addr;  /* socket-address for socket */         --> 実際のアドレス+ポート番号
+    //       char *ai_canonname;        /* canonical name for service location */ --> ホスト名
+    //       struct addrinfo *ai_next;  /* pointer to next in list */             --> 次の addrinfo ノードへのポインタ
+    //   };
+    //  *ai_next が LinkedList みたいにポインタで次の要素を指してくれるので、server.c 側で for (p = res; p != NULL; p->ai_next)とかけた
+    //  なぜLinkedListのような構造なのか？
+    //  1つのホストに対して、複数アドレスが返ってくる可能性があるため
+    //  検証コードを addrinfo_text.c において、実行結果を見ると
+    //  ➜  socket_programming git:(socket-programming) ✗ gcc -o addrinfo_test addrinfo_test.c && ./addrinfo_test
+    //    [0] IPv6: ::1
+    //    [1] IPv4: 127.0.0.1
+    //    合計: 2個
+    //  IPv4, IPv6 の2つのアドレスが返ってくる、server.c では、この2つのアドレスに対して bind を試みる
+
+    hints.ai_family   = AF_UNSPEC;　// IPv4, IPv6 どちらも対応
     hints.ai_socktype = SOCK_STREAM;
+    // man 2 socket で確認。
+    // TCP のこと、順序保証、信頼性、双方向接続
+    // A SOCK_STREAM type provides sequenced, reliable, two-way connection based byte streams.
+    // SOCK_DGRAM: UDP, connectionless, unreliable message
+    // SOCK_RAW: 内部ネットワークプロトコルへの直接アクセス、root権限が必要
 
     int rv = getaddrinfo(HOST, PORT, &hints, &res);
     if (rv != 0) { fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv)); return 1; }
 
     int sfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-    if (sfd < 0) { perror("socket"); return 1; }
+    if (sfd < 0) { perror("socket"); freeaddrinfo(res); return 1; }
 
-    if (connect(sfd, res->ai_addr, res->ai_addrlen) < 0) { perror("connect"); return 1; }
+    if (connect(sfd, res->ai_addr, res->ai_addrlen) < 0) { perror("connect"); close(sfd); return 1; }
     freeaddrinfo(res);
 
     /* リクエスト送信 */
