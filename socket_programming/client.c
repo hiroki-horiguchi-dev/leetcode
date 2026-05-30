@@ -6,19 +6,28 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
+// サーバーのIPアドレスとPORT番号
+// ドメイン名（例: google.com）が指定された場合:
+// 1. まず ISP（ソフトバンク、NTTなど）の DNS サーバーに問い合わせる
+// 2. ISP が知らなければルート DNS サーバー（世界13台）に問い合わせる
+// 3. さらに権威 DNS サーバーに問い合わせて IP アドレスを取得
+// 4. 返ってきた IP アドレスの HOST:PORT に connect() しに行く
+// ※ DNSはサーバーのポートは返さないが、PORTは http: 80, https: 443 なので特別指定しなくても問題ない
+
+// 自分のPCが契約しているプロバイダのDNSをちゃんと使っているのか調べてみた
+// ➜  / cat etc/resolv.conf : 自分のルーターが使っているIPアドレスがわかる
+// ➜  / scutil --dns:
+// →  / nslookup xxxx:xxxx:xx:xxx....:xxx
+// →  / whois xxxx:xxxx:xx:xxx....:xxx: descr: BBIX IPv6 Network SoftbankBB ABUSE e-mail: abuse@e.softbank.co.jp
+// うん、ちゃんと使ってた
 #define HOST "127.0.0.1"
 #define PORT "8080"
 
 int main(int argc, char *argv[]) {
     const char *expr = (argc > 1) ? argv[1] : "2+10";
 
-    struct addrinfo hints
+    struct addrinfo hints;
     struct addrinfo *res;
-
-    //    hints        = addrinfo の実体（箱そのもの）
-    //    &hints       = hints の住所
-    //    res          = 住所を入れる変数（まだ空）
-    //    getaddrinfo  = res に住所を入れてくれる
 
     memset(&hints, 0, sizeof hints);
     //  hints を全て0埋めしてくれる
@@ -51,17 +60,23 @@ int main(int argc, char *argv[]) {
     // SOCK_DGRAM: UDP, connectionless, unreliable message
     // SOCK_RAW: 内部ネットワークプロトコルへの直接アクセス、root権限が必要
 
-    int rv = getaddrinfo(HOST, PORT, &hints, &res);
+    int rv = getaddrinfo(HOST, PORT, &hints, &res); // HOST: 接続先のIPアドレス, PORT: 接続先のポート
     if (rv != 0) { fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv)); return 1; }
 
     int sfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    // アロー演算子、ポインタ経由でアクセスしている
+    // Java で書くところの res.ai_family と同じ
+    // man 2 socket
+    // RETURN VALUES
+    // A -1 is returned if an error occurs, otherwise the return value is a descriptor referencing the socket.
+
     if (sfd < 0) { perror("socket"); freeaddrinfo(res); return 1; }
 
-    if (connect(sfd, res->ai_addr, res->ai_addrlen) < 0) { perror("connect"); close(sfd); return 1; }
+    if (connect(sfd, res->ai_addr, res->ai_addrlen) < 0) { perror("connect"); close(sfd); freeaddrinfo(res); return 1; }
     freeaddrinfo(res);
 
     /* リクエスト送信 */
-    char req[512];
+    char req[512]; // スタック領域に512byte確保
     int reqlen = snprintf(req, sizeof req,
         "GET /calc?query=%s HTTP/1.1\r\n"
         "Host: localhost\r\n"
@@ -71,7 +86,7 @@ int main(int argc, char *argv[]) {
     write(sfd, req, reqlen);
 
     /* レスポンス受信・表示 */
-    char buf[4096];
+    char buf[4096]; // スタック領域に4096byte確保、スタックはメモリ領域の名前で、取り出されると自動でその分のメモリは解放される特徴がある。free()不要
     ssize_t n;
     while ((n = read(sfd, buf, sizeof buf - 1)) > 0) {
         buf[n] = '\0';

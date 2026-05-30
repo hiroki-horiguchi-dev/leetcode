@@ -1,4 +1,3 @@
-// 確認用コード
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -12,7 +11,9 @@ int main() {
     hints.ai_family   = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
 
+    printf("before: res = %p\n", (void *)res);
     getaddrinfo("localhost", "8080", &hints, &res);
+    printf("after:  res = %p\n", (void *)res);
 
     int count = 0;
     for (p = res; p != NULL; p = p->ai_next) {
